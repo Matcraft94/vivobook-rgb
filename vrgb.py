@@ -17,17 +17,34 @@ import array
 import glob
 
 VENDOR_ID = "0B05"
-PRODUCT_ID = "5570"
+
+# Hardware profiles mapping Product IDs to their specific LampArray Report IDs.
+# AMD models (e.g. M5606KA) typically use 0x41/0x45/0x46.
+# Intel models (e.g. S5406SA) typically use 0x01/0x05/0x0B.
+PROFILES = {
+    "5570": {
+        "report_attrs": 0x41,
+        "report_color": 0x45,
+        "report_auto":  0x46,
+    },
+    "19B6": {
+        "report_attrs": 0x01,
+        "report_color": 0x05,
+        "report_auto":  0x0B,
+    },
+}
 
 
 def find_device():
-    """Auto-detect hidraw device for ASUS ITE5570 keyboard controller."""
+    """Auto-detect hidraw device and profile for ASUS ITE5570 keyboard controller."""
     for uevent_path in glob.glob("/sys/class/hidraw/hidraw*/device/uevent"):
         with open(uevent_path) as f:
-            content = f.read()
-        if f"0000{VENDOR_ID}:0000{PRODUCT_ID}" in content.upper():
-            name = uevent_path.split("/")[4]
-            return f"/dev/{name}"
+            content = f.read().upper()
+        for pid, profile in PROFILES.items():
+            if f"0000{VENDOR_ID}:0000{pid}" in content:
+                name = uevent_path.split("/")[4]
+                return f"/dev/{name}", pid, profile
+
     print("Error: ASUS keyboard RGB controller (ITE5570) not found", file=sys.stderr)
     print("Make sure you have an ASUS Vivobook with RGB keyboard", file=sys.stderr)
     sys.exit(1)
@@ -49,14 +66,14 @@ def set_feature_report(fd, data):
     return buf
 
 
-def get_lamp_array_attributes(fd):
+def get_lamp_array_attributes(fd, profile):
     """Get lamp array information from the keyboard."""
     try:
-        report = get_feature_report(fd, 0x41, 23)
+        report = get_feature_report(fd, profile["report_attrs"], 23)
         lamp_count = struct.unpack_from('<H', report, 1)[0]
         bbox_w, bbox_h, bbox_d, kind, min_interval = struct.unpack_from('<IIIII', report, 3)
         return {
-            'lamp_count': lamp_count,
+            'lamp_count': max(1, lamp_count),
             'bbox_width': bbox_w,
             'bbox_height': bbox_h,
             'bbox_depth': bbox_d,
@@ -68,14 +85,14 @@ def get_lamp_array_attributes(fd):
         return None
 
 
-def set_autonomous_mode(fd, enabled):
+def set_autonomous_mode(fd, enabled, profile):
     """Enable/disable firmware autonomous (rainbow) mode."""
-    set_feature_report(fd, [0x46, 1 if enabled else 0])
+    set_feature_report(fd, [profile["report_auto"], 1 if enabled else 0])
 
 
-def set_color_range(fd, start, end, r, g, b, intensity=255):
+def set_color_range(fd, start, end, r, g, b, profile, intensity=255):
     """Set color for a range of keys."""
-    data = [0x45, 0x01]
+    data = [profile["report_color"], 0x01]
     data += list(struct.pack('<H', start))
     data += list(struct.pack('<H', end))
     data += [r, g, b, intensity]
@@ -99,7 +116,7 @@ def main():
         print(f"  {sys.argv[0]} color ffff00   # Yellow")
         sys.exit(1)
 
-    device = find_device()
+    device, pid, profile = find_device()
     
     try:
         fd = os.open(device, os.O_RDWR)
@@ -115,7 +132,7 @@ def main():
         cmd = sys.argv[1]
 
         if cmd == "info":
-            attrs = get_lamp_array_attributes(fd)
+            attrs = get_lamp_array_attributes(fd, profile)
             if attrs:
                 kinds = {
                     0: "Undefined", 1: "Keyboard", 2: "Mouse", 3: "GameController",
@@ -123,6 +140,7 @@ def main():
                     8: "Wearable", 9: "Furniture"
                 }
                 print(f"Device:              {device}")
+                print(f"Product ID:          0x{pid}")
                 print(f"Lamp count:          {attrs['lamp_count']}")
                 print(f"Kind:                {kinds.get(attrs['kind'], 'Unknown')} ({attrs['kind']})")
                 print(f"Bounding box:        {attrs['bbox_width']}x{attrs['bbox_height']}x{attrs['bbox_depth']} µm")
@@ -147,25 +165,25 @@ def main():
                 print("Error: Invalid hex color")
                 sys.exit(1)
 
-            attrs = get_lamp_array_attributes(fd)
+            attrs = get_lamp_array_attributes(fd, profile)
             if attrs:
-                set_autonomous_mode(fd, False)
-                set_color_range(fd, 0, attrs['lamp_count'] - 1, r, g, b, 255)
+                set_autonomous_mode(fd, False, profile)
+                set_color_range(fd, 0, attrs['lamp_count'] - 1, r, g, b, profile, 255)
             else:
                 print("Failed to get lamp attributes")
                 sys.exit(1)
 
         elif cmd == "off":
-            attrs = get_lamp_array_attributes(fd)
+            attrs = get_lamp_array_attributes(fd, profile)
             if attrs:
-                set_autonomous_mode(fd, False)
-                set_color_range(fd, 0, attrs['lamp_count'] - 1, 0, 0, 0, 0)
+                set_autonomous_mode(fd, False, profile)
+                set_color_range(fd, 0, attrs['lamp_count'] - 1, 0, 0, 0, profile, 0)
             else:
                 print("Failed to get lamp attributes")
                 sys.exit(1)
 
         elif cmd == "auto":
-            set_autonomous_mode(fd, True)
+            set_autonomous_mode(fd, True, profile)
 
         else:
             print(f"Unknown command: {cmd}")
