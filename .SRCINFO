@@ -10,6 +10,6 @@ pkgbase = vivobook-rgb
 	optdepends = systemd: for vrgb-default.service support
 	backup = etc/vrgb.conf
 	source = vivobook-rgb-0.2.0.tar.gz::https://github.com/matcraft94/vivobook-rgb/archive/v0.2.0.tar.gz
-	sha256sums = SKIP
+	sha256sums = f2791e510612c95572eac305f1553b89eb10741e5c09abd0fbb8140397839773
 
 pkgname = vivobook-rgb

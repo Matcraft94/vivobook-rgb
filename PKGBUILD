@@ -13,7 +13,7 @@ backup=('etc/vrgb.conf')
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz")
 # NOTE: run `updpkgsums` after pushing the v${pkgver} tag to GitHub,
 # then regenerate .SRCINFO with `makepkg --printsrcinfo > .SRCINFO`.
-sha256sums=('SKIP')
+sha256sums=('f2791e510612c95572eac305f1553b89eb10741e5c09abd0fbb8140397839773')
 
 package() {
     cd "${pkgname}-${pkgver}"
