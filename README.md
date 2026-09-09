@@ -46,6 +46,10 @@ vrgb color ffff00    # Yellow
 vrgb color ff5500    # Orange
 vrgb color 100900    # Warm white (good for night)
 
+# Optional brightness as second argument (0-255, default 255)
+vrgb color ff0000 64     # Red, dimmed to ~25%
+vrgb color 00ffff 128    # Cyan, half brightness
+
 # Turn off keyboard lighting
 vrgb off
 
@@ -55,7 +59,14 @@ vrgb auto
 
 ## Post-Installation
 
-After installation, reload udev rules or reboot:
+To use `vrgb` without sudo, add your user to the `vrgb` group (created on
+install), then log out and back in:
+
+```bash
+sudo usermod -aG vrgb $USER
+```
+
+If the keyboard was already connected, reload udev rules:
 
 ```bash
 sudo udevadm control --reload-rules
@@ -68,13 +79,25 @@ sudo udevadm trigger
 sudo systemctl enable --now vrgb-default.service
 ```
 
-Edit `/usr/lib/systemd/system/vrgb-default.service` to change the default color.
+Edit `/etc/vrgb.conf` to change the default color and brightness — no need to
+touch the unit file:
+
+```bash
+VRGB_COLOR=ff5500
+VRGB_BRIGHTNESS=128
+```
 
 ## Why this exists
 
 ASUS Vivobook keyboards use the HID LampArray protocol (Windows Dynamic Lighting standard) instead of the WMI interface used by ROG and TUF laptops. This means `asusctl` cannot control the RGB colors on these laptops, only brightness.
 
 This tool bridges that gap by communicating directly with the ITE5570 controller via hidraw.
+
+Note: the ITE5570 exposes the keyboard as a **single lamp** (one zone), so the
+whole keyboard shares one color — per-key control is not possible on this
+hardware. Also, the keyboard backlight *brightness* exposed at
+`/sys/class/leds/asus::kbd_backlight/` is independent of the RGB color channel;
+both can be combined.
 
 ## Requirements
 

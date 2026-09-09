@@ -11,6 +11,7 @@ License: MIT
 
 import sys
 import os
+import re
 import struct
 import fcntl
 import array
@@ -64,7 +65,7 @@ def get_lamp_array_attributes(fd):
             'min_update_interval': min_interval
         }
     except Exception as e:
-        print(f"Error getting lamp attributes: {e}")
+        print(f"Error getting lamp attributes: {e}", file=sys.stderr)
         return None
 
 
@@ -82,22 +83,44 @@ def set_color_range(fd, start, end, r, g, b, intensity=255):
     set_feature_report(fd, data)
 
 
+def usage():
+    prog = os.path.basename(sys.argv[0])
+    print("Usage:")
+    print(f"  {prog} info                      - Show lamp array info")
+    print(f"  {prog} color RRGGBB [BRIGHTNESS] - Set solid color (hex, e.g., ff0000)")
+    print(f"                                     BRIGHTNESS: 0-255 (optional, default 255)")
+    print(f"  {prog} off                       - Turn off LEDs")
+    print(f"  {prog} auto                      - Re-enable autonomous (rainbow) mode")
+    print()
+    print("Examples:")
+    print(f"  {prog} color ff0000        # Red, full brightness")
+    print(f"  {prog} color 00ff00 128    # Green, half brightness")
+    print(f"  {prog} color 0000ff        # Blue")
+    print(f"  {prog} color ff00ff        # Magenta")
+    print(f"  {prog} color 00ffff        # Cyan")
+    print(f"  {prog} color ffff00        # Yellow")
+
+
+def parse_brightness(arg):
+    try:
+        value = int(arg, 10)
+    except ValueError:
+        print(f"Error: Brightness must be an integer 0-255, got '{arg}'", file=sys.stderr)
+        sys.exit(1)
+    if not 0 <= value <= 255:
+        print(f"Error: Brightness must be 0-255, got {value}", file=sys.stderr)
+        sys.exit(1)
+    return value
+
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage:")
-        print(f"  {sys.argv[0]} info          - Show lamp array info")
-        print(f"  {sys.argv[0]} color RRGGBB  - Set solid color (hex, e.g., ff0000)")
-        print(f"  {sys.argv[0]} off           - Turn off LEDs")
-        print(f"  {sys.argv[0]} auto          - Re-enable autonomous (rainbow) mode")
-        print()
-        print("Examples:")
-        print(f"  {sys.argv[0]} color ff0000   # Red")
-        print(f"  {sys.argv[0]} color 00ff00   # Green")
-        print(f"  {sys.argv[0]} color 0000ff   # Blue")
-        print(f"  {sys.argv[0]} color ff00ff   # Magenta")
-        print(f"  {sys.argv[0]} color 00ffff   # Cyan")
-        print(f"  {sys.argv[0]} color ffff00   # Yellow")
+        usage()
         sys.exit(1)
+
+    if sys.argv[1] in ("-h", "--help"):
+        usage()
+        sys.exit(0)
 
     device = find_device()
     
@@ -133,26 +156,24 @@ def main():
 
         elif cmd == "color":
             if len(sys.argv) < 3:
-                print("Error: Provide hex color, e.g.: color ff0000")
+                print("Error: Provide hex color, e.g.: color ff0000", file=sys.stderr)
                 sys.exit(1)
             hex_color = sys.argv[2].lstrip('#')
-            if len(hex_color) != 6:
-                print("Error: Color must be 6 hex digits (RRGGBB)")
+            if not re.fullmatch(r'[0-9a-fA-F]{6}', hex_color):
+                print("Error: Color must be 6 hex digits (RRGGBB)", file=sys.stderr)
                 sys.exit(1)
-            try:
-                r = int(hex_color[0:2], 16)
-                g = int(hex_color[2:4], 16)
-                b = int(hex_color[4:6], 16)
-            except ValueError:
-                print("Error: Invalid hex color")
-                sys.exit(1)
+            r = int(hex_color[0:2], 16)
+            g = int(hex_color[2:4], 16)
+            b = int(hex_color[4:6], 16)
+
+            brightness = parse_brightness(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3].strip() else 255
 
             attrs = get_lamp_array_attributes(fd)
             if attrs:
                 set_autonomous_mode(fd, False)
-                set_color_range(fd, 0, attrs['lamp_count'] - 1, r, g, b, 255)
+                set_color_range(fd, 0, attrs['lamp_count'] - 1, r, g, b, brightness)
             else:
-                print("Failed to get lamp attributes")
+                print("Failed to get lamp attributes", file=sys.stderr)
                 sys.exit(1)
 
         elif cmd == "off":
@@ -161,14 +182,15 @@ def main():
                 set_autonomous_mode(fd, False)
                 set_color_range(fd, 0, attrs['lamp_count'] - 1, 0, 0, 0, 0)
             else:
-                print("Failed to get lamp attributes")
+                print("Failed to get lamp attributes", file=sys.stderr)
                 sys.exit(1)
 
         elif cmd == "auto":
             set_autonomous_mode(fd, True)
 
         else:
-            print(f"Unknown command: {cmd}")
+            print(f"Unknown command: {cmd}", file=sys.stderr)
+            usage()
             sys.exit(1)
 
     finally:
