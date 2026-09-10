@@ -1,0 +1,78 @@
+.TH VRGB 1 "September 2026" "vivobook-rgb" "User Commands"
+.SH NAME
+vrgb \- control the RGB keyboard of ASUS Vivobook laptops via HID LampArray
+.SH SYNOPSIS
+.B vrgb
+\fICOMMAND\fR [\fIARGS\fR...]
+.SH DESCRIPTION
+.B vrgb
+controls the RGB lighting of ASUS Vivobook keyboards that use the ITE5570
+HID LampArray controller (e.g. M5606KA, S5406SA) by talking to the
+controller directly through the Linux hidraw subsystem \[em] no WMI, no
+kernel modules.
+.PP
+The ITE5570 exposes the keyboard as a single lamp (one zone), so the whole
+keyboard shares one color. Per-key control is not possible on this hardware.
+.SH COMMANDS
+.TP
+.B info
+Show lamp array information (lamp count, kind, minimum update interval).
+.TP
+.B color \fICOLOR\fR [\fIBRIGHTNESS\fR]
+Set a solid color for the whole keyboard.
+\fICOLOR\fR is 6 hex digits (RRGGBB) or a name (see COLORS below).
+\fIBRIGHTNESS\fR is 0-255, default 255.
+.TP
+.B off
+Turn the LEDs off.
+.TP
+.B auto
+Re-enable the firmware autonomous (rainbow) mode.
+.TP
+.B effect breathe \fICOLOR\fR [\fIPERIOD\fR]
+Pulse \fICOLOR\fR breathing in and out. \fIPERIOD\fR is seconds per cycle,
+default 4.
+.TP
+.B effect cycle [\fIPERIOD\fR]
+Continuously cycle through the HSV color wheel in software. \fIPERIOD\fR
+is seconds per full wheel, default 8.
+.TP
+.B effect fade \fICOLOR\fR [\fIDURATION\fR]
+Fade from the current color to \fICOLOR\fR. \fIDURATION\fR is seconds,
+default 1.
+.TP
+.B daemon
+Run in the foreground watching the state file
+.IR ~/.cache/vrgb/state.json .
+Whenever the file changes, the new state is applied \[em] including live
+effect switching. Stop with Ctrl+C.
+.TP
+.B set \fIMODE\fR [\fIARGS\fR...]
+Write the state file consumed by
+.BR "vrgb daemon" .
+Modes: \fBcolor \fICOLOR\fR [\fIBRIGHTNESS\fR]\fR, \fBoff\fR, \fBauto\fR,
+\fBbreathe \fICOLOR\fR [\fIPERIOD\fR]\fR, \fBcycle\fR [\fIPERIOD\fR]\fR,
+\fBfade \fICOLOR\fR [\fIDURATION\fR]\fR.
+.SH COLORS
+Wherever a color is expected, either 6 hex digits (RRGGBB, with optional
+leading \fB#\fR) or one of these names is accepted:
+.BR red ", " green ", " blue ", " yellow ", " cyan ", " magenta ", "
+.BR orange ", " purple ", " pink ", " white ", " warmwhite ", " black "."
+.SH FILES
+.TP
+.I ~/.cache/vrgb/state.json
+State file consumed by
+.BR daemon .
+.TP
+.I /etc/vrgb.conf
+Default color/brightness applied by vrgb-default.service on boot and
+after resume.
+.SH EXIT STATUS
+0 on success, non-zero on error (device not found, permission denied,
+invalid arguments).
+.SH AUTHOR
+Lucy E. Arias <matcraft94@github.com>
+.SH LICENSE
+MIT
+.SH "SEE ALSO"
+The project README at https://github.com/matcraft94/vivobook-rgb

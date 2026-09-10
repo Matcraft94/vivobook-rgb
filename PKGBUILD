@@ -35,4 +35,8 @@ package() {
 
     # Documentación
     install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+
+    # Man page y completions
+    install -Dm644 vrgb.1 "${pkgdir}/usr/share/man/man1/vrgb.1"
+    install -Dm644 completions/vrgb.fish "${pkgdir}/usr/share/fish/vendor_completions.d/vrgb.fish"
 }
