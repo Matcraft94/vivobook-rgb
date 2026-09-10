@@ -27,7 +27,7 @@ package() {
     # Configuración por defecto del servicio
     install -Dm644 vrgb.conf "${pkgdir}/etc/vrgb.conf"
 
-    # Servicio systemd (opcional)
+    # Servicio systemd (opcional: color al boot y tras suspend/resume)
     install -Dm644 vrgb-default.service "${pkgdir}/usr/lib/systemd/system/vrgb-default.service"
 
     # Licencia

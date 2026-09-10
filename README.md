@@ -55,6 +55,17 @@ vrgb off
 
 # Enable rainbow mode (firmware controlled)
 vrgb auto
+
+# Software effects (run in foreground, Ctrl+C stops keeping last color)
+vrgb effect breathe 00ffff 5   # Cyan pulse, 5s period
+vrgb effect cycle 12           # Slow HSV color wheel
+vrgb effect fade ff5500 2      # Fade from current color to orange in 2s
+
+# Daemon driven by a state file (for scripts / other tools)
+vrgb daemon &                  # background watcher
+vrgb set color 00ff00 128      # applied by the daemon immediately
+vrgb set breathe ff00ff 6      # effects also work through the daemon
+vrgb set off                   # stop effects, turn off LEDs
 ```
 
 ## Post-Installation
@@ -73,11 +84,14 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
-### Optional: Set default color on boot
+### Optional: Set default color on boot (and restore after suspend)
 
 ```bash
 sudo systemctl enable --now vrgb-default.service
 ```
+
+The service is also hooked to `suspend.target`, so the color is re-applied
+when the machine resumes (the ITE5570 forgets it on suspend).
 
 Edit `/etc/vrgb.conf` to change the default color and brightness — no need to
 touch the unit file:
