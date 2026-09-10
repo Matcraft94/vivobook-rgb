@@ -32,6 +32,22 @@ DEFAULT_FRAME_S = 0.033
 EFFECT_MODES = ("breathe", "cycle", "fade")
 STATE_MODES = ("color", "off", "auto") + EFFECT_MODES
 
+# Named colors accepted anywhere a RRGGBB hex is expected.
+COLOR_NAMES = {
+    "red": "ff0000",
+    "green": "00ff00",
+    "blue": "0000ff",
+    "yellow": "ffff00",
+    "cyan": "00ffff",
+    "magenta": "ff00ff",
+    "orange": "ff5500",
+    "purple": "8000ff",
+    "pink": "ff69b4",
+    "white": "ffffff",
+    "warmwhite": "100900",
+    "black": "000000",
+}
+
 
 def find_device():
     """Auto-detect hidraw device for ASUS ITE5570 keyboard controller."""
@@ -110,6 +126,12 @@ def parse_hex_color(arg):
         print(f"Error: Color must be 6 hex digits (RRGGBB), got '{arg}'", file=sys.stderr)
         sys.exit(1)
     return (int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16))
+
+
+def parse_color(arg):
+    """Parse a color by name (red, cyan, ...) or hex (RRGGBB / #RRGGBB)."""
+    named = COLOR_NAMES.get(arg.lower().lstrip('#'))
+    return parse_hex_color(named or arg)
 
 
 def hsv_to_rgb(h, s, v):
@@ -223,7 +245,7 @@ def read_state():
     color = state.get("color", "ffffff")
     if mode in ("color", "breathe", "fade"):
         try:
-            rgb = parse_hex_color(color)
+            rgb = parse_color(color)
         except SystemExit:
             warn("invalid color in state file, ignoring")
             return None
@@ -385,7 +407,7 @@ def cmd_effect(fd, attrs, argv):
         rgb = (255, 255, 255)
         period = parse_speed(argv[1] if len(argv) > 1 else None, DEFAULT_SPEEDS[mode])
     else:
-        rgb = parse_hex_color(argv[1]) if len(argv) > 1 else (255, 255, 255)
+        rgb = parse_color(argv[1]) if len(argv) > 1 else (255, 255, 255)
         period = parse_speed(argv[2] if len(argv) > 2 else None, DEFAULT_SPEEDS[mode])
 
     set_autonomous_mode(fd, False)
@@ -411,7 +433,7 @@ def cmd_set(argv):
             print(f"Error: mode '{mode}' requires a color, e.g.: set {mode} ff0000",
                   file=sys.stderr)
             sys.exit(1)
-        parse_hex_color(color)  # validate
+        parse_color(color)  # validate
     elif color:
         print(f"Warning: mode '{mode}' ignores the color argument", file=sys.stderr)
 
@@ -484,9 +506,10 @@ def main():
 
         elif cmd == "color":
             if len(sys.argv) < 3:
-                print("Error: Provide hex color, e.g.: color ff0000", file=sys.stderr)
+                print("Error: Provide a color (hex like ff0000 or a name like red)",
+                      file=sys.stderr)
                 sys.exit(1)
-            r, g, b = parse_hex_color(sys.argv[2])
+            r, g, b = parse_color(sys.argv[2])
 
             brightness = parse_brightness(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3].strip() else 255
 
