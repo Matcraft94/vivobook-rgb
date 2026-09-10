@@ -1,6 +1,6 @@
 [Unit]
-Description=Vivobook RGB default color
-After=multi-user.target
+Description=Vivobook RGB default color (boot + resume)
+After=multi-user.target suspend.target
 
 [Service]
 Type=oneshot
@@ -9,4 +9,4 @@ ExecStart=/usr/bin/vrgb color ${VRGB_COLOR} ${VRGB_BRIGHTNESS}
 RemainAfterExit=yes
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target suspend.target
